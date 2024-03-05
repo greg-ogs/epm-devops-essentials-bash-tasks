@@ -27,11 +27,13 @@ email based on the rules above.
 ```
 ### was:
 ```csv
+2,1,Christina Gonzalez,Director,,
 8,6,Bart charlow,Executive Director,,
 9,7,Bart Charlow,Executive Director,,
 ```
 ### became:
 ```csv
+2,1,Christina Gonzalez,Director,cgonzalez@abc.com,
 8,6,Bart Charlow,Executive Director,bcharlow6@abc.com,
 9,7,Bart Charlow,Executive Director,bcharlow7@abc.com,
 ```
