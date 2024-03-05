@@ -1,6 +1,6 @@
 # DevOps Essentials: Final task 1
 
-> **Please use branch `task1` for this task that already exist in your forked repository after you has been started task**
+> **Please use branch `task1` for this task that already exist in your forked repository after you has been started task.**
 
 ## Bash Task 1
 
@@ -19,7 +19,8 @@ Email format: first letter from name and full surname, lowercase.\
 4) Path to accounts.csv file should be as argument to the script.
 ## Definition of done.
 Developed bash script which automatically creates accounts_new.csv and updates columns name and
-email based on the rules above.
+email based on the rules above.\
+**Script should not use any additional installed packages!**
 
 ## Example:
 ```bash
