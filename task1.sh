@@ -32,9 +32,12 @@ generate_email() {
     fi
     echo "$email"
 }
+header=$(head -n 1 "$input_csv")
+
+echo "$header" > "$output_csv"
 
 # Process the CSV file and generate the new CSV file
-while IFS=, read -r id location_id name title email department; do
+tail -n +2 "$input_csv" | while IFS=, read -r id location_id name title email department; do
     # Standardize the name
     standardized_name=$(standardize_name "$name")
 
@@ -43,7 +46,7 @@ while IFS=, read -r id location_id name title email department; do
 
     # Output the processed row to the new CSV file
     echo "$id,$location_id,$standardized_name,$title,$generated_email,$department" >> "$output_csv"
-done < "$input_csv"
+done
 
 echo "Processing complete. New CSV file created: $output_csv"
 
