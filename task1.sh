@@ -25,7 +25,11 @@ generate_email() {
     local location_id="$2"
     local first_name=$(echo "$name" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
     local last_name=$(echo "$name" | cut -d' ' -f2 | tr '[:upper:]' '[:lower:]')
-    local email="${first_name:0:1}${last_name}${location_id}@abc.com"
+    local email="${first_name:0:1}${last_name}@abc.com"
+    # Add location_id to email if it is a duplicate
+    if grep -q "$email" "$output_csv"; then
+        email="${first_name:0:1}${last_name}${location_id}@abc.com"
+    fi
     echo "$email"
 }
 
