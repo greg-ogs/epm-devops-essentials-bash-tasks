@@ -99,7 +99,7 @@ done
 
 duplicated_list
 
-# echo "Processing complete. New CSV file created: $output_csv"
+echo "Processing complete. New CSV file created: $output_csv"
 
 comas
 
