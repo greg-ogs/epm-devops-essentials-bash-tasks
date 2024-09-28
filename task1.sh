@@ -12,6 +12,16 @@ input_csv="$1"
 # Output CSV file path
 output_csv="accounts_new.csv"
 
+# change comas for ;
+comas(){
+  # Input and output file names
+  input_file="$1"
+  output_file="accounts_rewrited.csv"
+
+  # Use sed to perform the pattern replacement, capturing the unknown value
+  sed 's/,\"\([^,]*\),\s*\([^,]*\)\",/,\"\1- \2\",/g' "$input_file" > "$output_file"
+}
+
 # Function to standardize names
 standardize_name() {
     local name="$1"
@@ -62,24 +72,28 @@ duplicated_list(){
     ' accounts_new.csv > temp.csv && mv temp.csv accounts_new.csv
   done
 }
+comas "$input_csv"
+
+input_csv="accounts_rewrited.csv"
 
 header=$(head -n 1 "$input_csv")
 
 echo "$header" > "$output_csv"
 
-# Process the CSV file and generate the new CSV file
+# Main loop
 tail -n +2 "$input_csv" | while IFS=, read -r id location_id name title email department; do
     # Standardize the name
     standardized_name=$(standardize_name "$name")
 
     # Generate the email
-    generated_email=$(generate_email "$standardized_name" "$location_id")
+    generated_email=$(generate_email "$standardized_name")
 
     # Output the processed row to the new CSV file
     echo "$id,$location_id,$standardized_name,$title,$generated_email,$department" >> "$output_csv"
 done
-
+#
 duplicated_list
 
 echo "Processing complete. New CSV file created: $output_csv"
 
+rm accounts_rewrited.csv duplicate_emails.txt
