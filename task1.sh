@@ -22,16 +22,47 @@ standardize_name() {
 # Function to generate email
 generate_email() {
     local name="$1"
-    local location_id="$2"
     local first_name=$(echo "$name" | cut -d' ' -f1 | tr '[:upper:]' '[:lower:]')
     local last_name=$(echo "$name" | cut -d' ' -f2 | tr '[:upper:]' '[:lower:]')
     local email="${first_name:0:1}${last_name}@abc.com"
-    # Add location_id to email if it is a duplicate
-    if grep -q "$email" "$output_csv"; then
-        email="${first_name:0:1}${last_name}${location_id}@abc.com"
-    fi
     echo "$email"
 }
+
+# Function to handle duplicate emails
+duplicated_list(){
+  declare -A emails_seen
+  declare -a duplicate_emails
+
+  while IFS=',' read -r -a fields; do
+    email="${fields[4]}" # Column 5 (0-indexed)
+
+    if [[ -n "${emails_seen[$email]}" ]]; then
+      duplicate_emails+=("$email")
+    else
+      emails_seen[$email]=1
+    fi
+  done < accounts_new.csv
+
+  echo "Duplicate emails:"
+  printf '%s\n' "${duplicate_emails[@]}" > duplicate_emails.txt
+
+  # Read duplicate emails from the text file into an array
+  mapfile -t duplicate_emails < duplicate_emails.txt
+
+  # Process each duplicate email
+  for email in "${duplicate_emails[@]}"; do
+    # Use awk to modify the CSV file in-place
+    awk -F ',' -v email="$email" '
+      BEGIN { OFS = FS }
+        $5 == email {
+        split($5, parts, "@")
+        $5 = parts[1] $2 "@" parts[2]
+      }
+      { print }
+    ' accounts_new.csv > temp.csv && mv temp.csv accounts_new.csv
+  done
+}
+
 header=$(head -n 1 "$input_csv")
 
 echo "$header" > "$output_csv"
@@ -47,6 +78,8 @@ tail -n +2 "$input_csv" | while IFS=, read -r id location_id name title email de
     # Output the processed row to the new CSV file
     echo "$id,$location_id,$standardized_name,$title,$generated_email,$department" >> "$output_csv"
 done
+
+duplicated_list
 
 echo "Processing complete. New CSV file created: $output_csv"
 
