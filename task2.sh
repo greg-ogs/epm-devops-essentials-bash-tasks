@@ -1,6 +1,7 @@
 #!/bin/bash
+input_file="$1"
 
-original_text=$(head -n 1 output.txt)
+original_text=$(head -n 1 "$input_file")
 
 n_of_tests=$(echo "$original_text" | awk -F "1.." '{print $2}')
 n_test=$((${n_of_tests:0:1}))
@@ -12,10 +13,36 @@ test_name=$(echo "$original_text" | grep -oP '\[ \K[^\]]+')
 end_line=$((2 + n_test))
 
 # Process test results (lines 3 to end_line)
-test_results=$(sed -n "3,${end_line}p" output.txt)
+test_results=$(sed -n "3,${end_line}p" "$input_file")
 
 # Initialize the "tests" array (no initial comma)
 tests_array=""
+
+#Line for summary
+# summary vars
+success=0
+failed=0
+
+last_line=$(tail -n 1 "$input_file")
+
+# Adjust the delimiter (' ') if your fields are separated by something else
+fields=$(echo "$last_line" | awk -F' ' '{for (i=1; i<=NF; i++) print $i}')
+
+for field in $fields; do
+    if [[ "$field" == *"%"* ]]; then
+      rat="$echo "$field""
+      rating=${rat:1:10}
+      f_rating=$(echo "$rating" | tr -d '%,' )
+    fi
+done
+
+for field in $fields; do
+    if [[ "$field" == *"ms"* ]]; then
+      echo "$field"
+      f_dur="$echo "$field""
+      f_duration=${f_dur:1:10}
+    fi
+done
 
 # Loop through each line of test results
 while read -r line; do
@@ -37,6 +64,12 @@ while read -r line; do
                                         print "false"
                                     }
                                  }')
+  if [ "$status" == "true" ]; then
+    ((success++))
+  fi
+  if [ "$status" == "false" ]; then
+    ((failed++))
+  fi
   dur=$(echo "$line" | awk -F'[, ]+' '{
                                              print $NF
                                   }'| tr -d '\n')
@@ -60,7 +93,14 @@ done <<< "$test_results"
 json_output="{
   \"testName\": \"$test_name\",
   \"tests\": [$tests_array],
+  \"summary\": {
+    \"success\": $success,
+    \"failed\": $failed,
+    \"rating\": $f_rating,
+    \"duration\": \"$f_duration\"
+  }
 }"
 
 # Print the JSON output
 echo "$json_output" > output.json
+echo "json file created successfully"
