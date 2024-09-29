@@ -7,8 +7,10 @@ n_of_tests=$(echo "$original_text" | awk -F "1.." '{print $2}')
 n_test=$((${n_of_tests:0:1}))
 
 # Extract the test name using regular expressions
-test_name=$(echo "$original_text" | grep -oP '\[ \K[^\]]+')
-
+tname=$(echo "$original_text" | awk -F "[" '{print $2}' | awk -F "]" '{print $1}')
+num_char=$(echo "$tname" | awk '{ print length }')
+last_mone=$(($num_char-2))
+test_name=$(echo "${tname:1:$last_mone}")
 # Calculate the ending line for test results based on n_test
 end_line=$((2 + n_test))
 
