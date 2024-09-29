@@ -1,4 +1,4 @@
-[ Asserts Samples ], 1..8 tests
+[ Asserts Samples ], 1..7 tests
 -----------------------------------------------------------------------------------
 not ok  1  expecting command finishes successfully (bash way), 7ms
 not ok  2  expecting command finishes successfully (the same as above, bats way), 27ms

@@ -1,113 +1,100 @@
 #!/bin/bash
-input_file="$1"
 
-original_text=$(head -n 1 "$input_file")
 
-n_of_tests=$(echo "$original_text" | awk -F "1.." '{print $2}')
-n_test=$((${n_of_tests:0:1}))
+if [[ $1 ]]
+then
+  input_file=$1
+else
+  echo "Pass input file path!"
+  exit 1
+fi
 
-# Extract the test name using regular expressions
-tname=$(echo "$original_text" | awk -F "[" '{print $2}' | awk -F "]" '{print $1}')
-num_char=$(echo "$tname" | awk '{ print length }')
-last_mone=$(($num_char-2))
-test_name=$(echo "${tname:1:$last_mone}")
-# Calculate the ending line for test results based on n_test
-end_line=$((2 + n_test))
+output_file="output.json"
 
-# Process test results (lines 3 to end_line)
-test_results=$(sed -n "3,${end_line}p" "$input_file")
+# -------------------------------------------------
+#  Preparation
+# -------------------------------------------------
 
-# Initialize the "tests" array (no initial comma)
-tests_array=""
+exec < "$input_file"
+read -r line
+test_name=$(sed -n '/\[.*/s/\[ \(.*\) \].*/\1/p' <<< "$line")
+tests_count=$(grep -o '\b1\.\.[0-9]\+' <<< "$line")
+tests_count=${tests_count:3}
+tests_json_arr=()
+read -r line
 
-#Line for summary
-# summary vars
-success=0
-failed=0
+for ((i=1; i <= tests_count; i++)); do
 
-last_line=$(tail -n 1 "$input_file")
+# -------------------------------------------------
+#  Get tests info
+# -------------------------------------------------
 
-# Adjust the delimiter (' ') if your fields are separated by something else
-fields=$(echo "$last_line" | awk -F' ' '{for (i=1; i<=NF; i++) print $i}')
+  read -r line
 
-for field in $fields; do
-    if [[ "$field" == *"%"* ]]; then
-      rat="$echo "$field""
-      rating=${rat:1:10}
-      f_rating=$(echo "$rating" | tr -d '%,' )
-    fi
+  if grep -q 'not ok' <<< "$line"
+  then
+    status=false
+  else
+    status=true
+  fi
+
+  duration=$(grep -o '[0-9]\+ms' <<< "$line")
+
+  name=$(grep -o '[0-9] .\+)' <<< "$line")
+  name=${name:3}
+
+# -------------------------------------------------
+#  Convert test info to json
+# -------------------------------------------------
+
+  test_json=$(./jq -n --arg name "$name" \
+                   --argjson status "$status" \
+                   --arg duration "$duration" \
+                   '$ARGS.named'
+  )
+
+  tests_json_arr+=("$test_json")
+
 done
 
-for field in $fields; do
-    if [[ "$field" == *"ms"* ]]; then
-      echo "$field"
-      f_dur="$echo "$field""
-      f_duration=${f_dur:1:10}
-    fi
-done
+# -------------------------------------------------
+#  Get summary info
+# -------------------------------------------------
 
-# Loop through each line of test results
-while read -r line; do
-  name=$(echo "$line" | awk -F'[, ]+' '{
-                                    if ($1 == "ok") {
-                                        for (i = 3; i <= NF - 1; i++) {
-                                                    printf "%s ", $i
-                                                }
-                                    } else if ($1 == "not" && $2 == "ok") {
-                                        for (i = 4; i <= NF - 1; i++) {
-                                                    printf "%s ", $i
-                                                }
-                                    }
-                                }')
-  nn_char=$(echo "$name" | awk '{ print length }')
-  nn_last=$(($nn_char-1))
-  if [ $nn_last -ge 0 ]; then
-    final_name=$(echo "${name:0:$nn_last}")
-  fi
-  status=$(echo "$line" | awk -F'[, ]+' '{
-                                    if ($1 == "ok") {
-                                        print "true"
-                                    } else if ($1 == "not" && $2 == "ok") {
-                                        print "false"
-                                    }
-                                 }')
-  if [ "$status" == "true" ]; then
-    ((success++))
-  fi
-  if [ "$status" == "false" ]; then
-    ((failed++))
-  fi
-  dur=$(echo "$line" | awk -F'[, ]+' '{
-                                             print $NF
-                                  }'| tr -d '\n')
+read -r line
+read -r line
 
-  duration="${dur:0:3}"
+success=$(grep -o '^[0-9]\+\s' <<< "$line")
 
-  # Append test details to the array
-  # Add a comma only if there are already entries in the array
-  if [ -n "$tests_array" ]; then
-    tests_array="$tests_array,"
-  fi
-  tests_array="$tests_array
-    {
-      \"name\": \"$final_name\",
-      \"status\": $status,
-      \"duration\": \"$duration\"
-    }"
-done <<< "$test_results"
+failed=$((tests_count - success))
 
-# Construct the final JSON output
-json_output="{
-  \"testName\": \"$test_name\",
-  \"tests\": [$tests_array],
-  \"summary\": {
-    \"success\": $success,
-    \"failed\": $failed,
-    \"rating\": $f_rating,
-    \"duration\": \"$f_duration\"
-  }
-}"
+rating=$(grep -o '[0-9\.]\+%' <<< "$line")
+if [[ -n $rating ]]; then
+  rating="${rating:: -1}"
+fi
 
-# Print the JSON output
-echo "$json_output" > output.json
-echo "json file created successfully"
+duration=$(grep -o '[0-9]\+ms' <<< "$line")
+
+# -------------------------------------------------
+# Building finale json file
+# -------------------------------------------------
+
+tests_json=$(./jq -sr '.' <<< "${tests_json_arr[@]}")
+
+summary_json=$(./jq -nr --argjson success "$success" \
+                     --argjson failed "$failed" \
+                     --argjson rating "$rating" \
+                     --arg duration "$duration" \
+                     '$ARGS.named'
+)
+
+final=$(./jq -nr --arg testName "$test_name" \
+              --argjson tests "$tests_json" \
+              --argjson summary "$summary_json" \
+              '$ARGS.named'
+)
+
+echo "$final" | tr -d '\r' > "$output_file"
+
+echo "Successfully created $output_file"
+exit 0
