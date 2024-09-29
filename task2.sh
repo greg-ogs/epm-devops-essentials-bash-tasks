@@ -60,7 +60,7 @@ while read -r line; do
                                     }
                                 }')
   nn_char=$(echo "$name" | awk '{ print length }')
-  nn_last=$(($nn_char-2))
+  nn_last=$(($nn_char-1))
   if [ $nn_last -ge 0 ]; then
     final_name=$(echo "${name:0:$nn_last}")
   fi
