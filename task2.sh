@@ -91,7 +91,7 @@ while read -r line; do
   tests_array="$tests_array
     {
       \"name\": \"$final_name\",
-      \"status\": \"$status\",
+      \"status\": \$status\,
       \"duration\": \"$duration\"
     }"
 done <<< "$test_results"
